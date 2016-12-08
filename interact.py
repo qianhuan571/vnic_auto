@@ -234,11 +234,9 @@ def dev_xml():
         dev_child(k, child, lev + 1, dom)
     return dom.toprettyxml()
 
-def tar_dev_xml(tarDevId, tarClass, tarDesc):
-    def dev_child(devInst, tree, lev, dom, tarDevId, tarClass, tarDesc):
-        global devid_key,strnum,devicelist
-        i = 0
-        devParent = c_int(devInst)
+def target_dev(tarDevId, tarClass, tarDesc):
+    def dev_child(nodeInst, deviceList, targetDevId, targetClass, targetDesc):
+        devParent = c_int(nodeInst)
         devChild = c_int(0)
         devNextChild = c_int(0)
         if cfg.CM_Get_Child(byref(devChild), devParent, 0) == 0:
@@ -247,15 +245,14 @@ def tar_dev_xml(tarDevId, tarClass, tarDesc):
             clas = get_dev_class(devChild.value)
             driver = get_dev_driver(devChild.value)
             if tarDevId in devId and tarClass in clas and tarDesc in desc:
-                node = dom.createElement("Device")
-                node.setAttribute("DevInst", str(devChild.value))
-                node.setAttribute("Desc", desc)
-                node.setAttribute("Lev", str(lev))
-                node.setAttribute("DevId", devId)
-                node.setAttribute("Class", clas)
-                node.setAttribute("Driver", driver)
-                tree.appendChild(node)
-            dev_child(devChild.value, node, lev + 1, dom, tarDevId, tarClass, tarDesc)
+                node = {}
+                node.update({"DevInst":str(devChild.value)})
+                node.update({"Desc":desc})
+                node.update({"DevId":devId})
+                node.update({"Class":clas})
+                node.update({"Driver":driver})
+                deviceList.append(node)
+            dev_child(devChild.value, deviceList, targetDevId, targetClass, targetDesc)
             while cfg.CM_Get_Sibling(byref(devNextChild), devChild, 0) == 0:
                 devChild.value = devNextChild.value
                 desc = get_dev_desc(devChild.value)
@@ -263,54 +260,50 @@ def tar_dev_xml(tarDevId, tarClass, tarDesc):
                 clas = get_dev_class(devChild.value)
                 driver = get_dev_driver(devChild.value)
                 if tarDevId in devId and tarClass in clas and tarDesc in desc:
-                    node = dom.createElement("Device")
-                    node.setAttribute("DevInst", str(devChild.value))
-                    node.setAttribute("Desc", desc)
-                    node.setAttribute("Lev", str(lev))
-                    node.setAttribute("DevId", devId)
-                    node.setAttribute("Class", clas)
-                    node.setAttribute("Driver", driver)
-                    tree.appendChild(node)
-                dev_child(devChild.value, node, lev + 1, dom, tarDevId, tarClass, tarDesc)
+                    node = {}
+                    node.update({"DevInst":str(devChild.value)})
+                    node.update({"Desc":desc})
+                    node.update({"DevId":devId})
+                    node.update({"Class":clas})
+                    node.update({"Driver":driver})
+                    deviceList.append(node)
+                dev_child(devChild.value, deviceList, targetDevId, targetClass, targetDesc)
 
-
-    dom = Document()
-    dom.appendChild(dom.createElement("Devicelist"))
+    devlist = []
+    rootdev = []
     devInst = c_int(0)
     devInstNext = c_int(0)
-    lev = 0
     if 0 == cfg.CM_Locate_DevNodeW(byref(devInst), 0, 0):
         desc = get_dev_desc(devInst.value)
         devId = get_dev_id(devInst.value)
         clas = get_dev_class(devChild.value)
         driver = get_dev_driver(devInst.value)
+        rootdev.append(devInst)
         if tarDevId in devId and tarClass in clas and tarDesc in desc:
-            node = dom.createElement("Device")
-            node.setAttribute("DevInst", str(devChild.value))
-            node.setAttribute("Desc", desc)
-            node.setAttribute("Lev", str(lev))
-            node.setAttribute("DevId", devId)
-            node.setAttribute("Class", clas)
-            node.setAttribute("Driver", driver)
-            dom.documentElement.appendChild(node)
+            node = {}
+            node.update({"DevInst":str(devInst.value)})
+            node.update({"Desc":desc})
+            node.update({"DevId":devId})
+            node.update({"Class":clas})
+            node.update({"Driver":driver})
+            devlist.append(node)
         while 0 == cfg.CM_Get_Sibling(byref(devInstNext), devInst, 0):
             devInst.value = devInstNext.value
             desc = get_dev_desc(devInst.value)
             devId = get_dev_id(devInst.value)
             driver = get_dev_driver(devInst.value)
+            rootdev.append(devInst)
             if tarDevId in devId and tarClass in clas and tarDesc in desc:
-                node = dom.createElement("Device")
-                node.setAttribute("DevInst", str(devChild.value))
-                node.setAttribute("Desc", desc)
-                node.setAttribute("Lev", str(lev))
-                node.setAttribute("DevId", devId)
-                node.setAttribute("Class", clas)
-                node.setAttribute("Driver", driver)
-                dom.documentElement.appendChild(node)
-    for child in dom.documentElement.childNodes:
-        k = int(child.getAttribute("DevInst"))
-        dev_child(k, child, lev + 1, dom)
-    return dom.toprettyxml()
+                node = {}
+                node.update({"DevInst":str(devInst.value)})
+                node.update({"Desc":desc})
+                node.update({"DevId":devId})
+                node.update({"Class":clas})
+                node.update({"Driver":driver})
+                devlist.append(node)
+    for node in rootdev
+        dev_child(node.value, devlist, tarDevId, tarClass, tarDesc)
+    return devlist
 
 import time
 

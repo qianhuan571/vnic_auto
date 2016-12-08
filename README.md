@@ -1,2 +1,2 @@
 # vnic_auto
-the case vnic auto test enable
+the case vnic auto test enable.

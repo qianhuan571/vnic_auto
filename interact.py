@@ -336,6 +336,21 @@ def USBdeviceisinstalled():
             time.sleep(10)
             timeout -= 1
 
+def device_is_installed(tarDevId, tarClass, tarDesc)
+    devList = target_dev(tarDevId, tarClass, tarDesc)
+    if 0 == len(devList):
+        print 'Device is not connected to host'
+        return -1
+    elif 1 == len(devList):
+        driver = get_dev_driver(int(devList[0]['DevInst']))
+        if 'ERR' in driver:
+            print 'No driver installed for the device'
+            return 0
+        return 1
+    else:
+        print 'more than one same device are connected to host'
+        return 2
+    
 def get_netcardip(mac):
     readflag = 0
     info = psutil.net_if_addrs()

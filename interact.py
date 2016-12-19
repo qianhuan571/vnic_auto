@@ -97,11 +97,13 @@ CM_DRP_CLASS = 0x0008
 CM_DRP_DRIVER = 0x000A
 NULL = 0
 
-devicepidstr = 'USB\\VID_1FC9&PID_0094'
-##devicepidstr = 'USB\\VID_1366&PID_0105'
-##devicepidstr = 'VEN_8086&DEV_0082'
+#devicepId = 'USB\\VID_1FC9&PID_0094'
+deviceClass = 'Net'
+deviceDesc = 'Intel(R) 82579LM Gigabit Network Connection'
+##devicepId = 'USB\\VID_1366&PID_0105'
+deviceId = 'VEN_8086&DEV_1502'
 #reg_service = 'usb_rndisx'
-reg_service = 'NETwNs64'
+#reg_service = 'NETwNs64'
 #networkcardmac = '00-12-13-10-15-11'
 netcardmac = '08-11-96-AB-D6-34'
 
@@ -276,7 +278,7 @@ def target_dev(tarDevId, tarClass, tarDesc):
     if 0 == cfg.CM_Locate_DevNodeW(byref(devInst), 0, 0):
         desc = get_dev_desc(devInst.value)
         devId = get_dev_id(devInst.value)
-        clas = get_dev_class(devChild.value)
+        clas = get_dev_class(devInst.value)
         driver = get_dev_driver(devInst.value)
         rootdev.append(devInst)
         if tarDevId in devId and tarClass in clas and tarDesc in desc:
@@ -301,7 +303,7 @@ def target_dev(tarDevId, tarClass, tarDesc):
                 node.update({"Class":clas})
                 node.update({"Driver":driver})
                 devlist.append(node)
-    for node in rootdev
+    for node in rootdev:
         dev_child(node.value, devlist, tarDevId, tarClass, tarDesc)
     return devlist
 
@@ -336,20 +338,20 @@ def USBdeviceisinstalled():
             time.sleep(10)
             timeout -= 1
 
-def device_is_installed(tarDevId, tarClass, tarDesc)
+def device_is_installed(tarDevId, tarClass, tarDesc):
     devList = target_dev(tarDevId, tarClass, tarDesc)
     if 0 == len(devList):
         print 'Device is not connected to host'
         return -1
     elif 1 == len(devList):
         driver = get_dev_driver(int(devList[0]['DevInst']))
-        if 'ERR' in driver:
-            print 'No driver installed for the device'
-            return 0
-        return 1
-    else:
-        print 'more than one same device are connected to host'
-        return 2
+        if 'ERR' in driver:
+            print 'No driver installed for the device'
+            return 0
+        return 1
+    else:
+        print 'more than one same device are connected to host'
+        return 2
     
 def get_netcardip(mac):
     readflag = 0
@@ -387,7 +389,7 @@ def interact_run(cmd,timeout=2):
 
 
 ##FREEMV_INTERACT_RESULT = 1
-##if USBdeviceisinstalled() == 1 :
+##if device_is_installed(deviceId, deviceClass, deviceDesc) == 1 :
 ##    netip = get_netcardip(netcardmac)
 ##    if netip != 'the netcard hasn\'t installed':
 ##        ret = interact_run('ping -S '+ netip +' 10.192.225.219 -t',0.5)

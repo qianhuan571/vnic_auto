@@ -99,12 +99,14 @@ NULL = 0
 
 deviceClass = 'Net'
 #deviceDesc = 'Intel(R) 82579LM Gigabit Network Connection'
-deviceDesc = ''
+deviceDesc = ' USB RNDIS'
 ##deviceId = 'USB\\VID_1366&PID_0105'
 ##deviceId = 'VEN_8086&DEV_1502'
-deviceId = 'USB\\VID_1FC9&PID_0094'
-networkcardmac = '00-12-13-10-15-11'
+deviceId = 'USB\\VID_1FC9&PID_0095'
+#netcardmac = '00-12-13-10-15-11'
+netcardmac = 'D4-BE-D9-45-22-60'
 #netcardmac = '08-11-96-AB-D6-34'
+pingtime = 0.2 #minites
 
 
 def get_dev_class(devInst):
@@ -136,104 +138,18 @@ def get_dev_id(devInst):
         return "ERR(%d):%s"%(devInst, RERVALS[cr])
 
 
-drivers = []
+#drivers = []
 def get_dev_driver(devInst):
     global drivers
     buf = (c_wchar*1024)()
     blen = c_int(1024)
     cr = cfg.CM_Get_DevNode_Registry_PropertyW(devInst, CM_DRP_DRIVER, NULL, buf, byref(blen), 0);
     if cr == 0:
-        drivers.append(buf.value)
+        #drivers.append(buf.value)
         return buf.value
     else:
         return "ERR(%d):%s"%(devInst, RERVALS[cr])
 
-
-from xml.dom.minidom import *
-def dev_xml():
-    def dev_child(devInst, tree, lev, dom):
-        global devid_key,strnum,devicelist
-        i = 0
-        devParent = c_int(devInst)
-        devChild = c_int(0)
-        devNextChild = c_int(0)
-        if cfg.CM_Get_Child(byref(devChild), devParent, 0) == 0:
-            desc = get_dev_desc(devChild.value)
-            devId = get_dev_id(devChild.value)
-            driver = get_dev_driver(devChild.value)
-            node = dom.createElement("Device")
-            node.setAttribute("DevInst", str(devChild.value))
-            node.setAttribute("Desc", desc)
-            node.setAttribute("Lev", str(lev))
-            node.setAttribute("DevId", devId)
-            node.setAttribute("Driver", driver)
-            #print devId
-            if devicepidstr in devId:
-                devicelist[i] = devId
-                devicelist[i+1] = desc
-                devicelist[i+2] = driver
-                devicelist[i+3] = devChild.value
-                #print devicelist[i]
-                i += 1
-                strnum = i 
-            tree.appendChild(node)
-            dev_child(devChild.value, node, lev + 1, dom)
-            while cfg.CM_Get_Sibling(byref(devNextChild), devChild, 0) == 0:
-                devChild.value = devNextChild.value
-                desc = get_dev_desc(devChild.value)
-                devId = get_dev_id(devChild.value)
-                driver = get_dev_driver(devChild.value)
-                node = dom.createElement("Device")
-                node.setAttribute("DevInst", str(devChild.value))
-                node.setAttribute("Desc", desc)
-                node.setAttribute("Lev", str(lev))
-                node.setAttribute("DevId", devId)  
-                node.setAttribute("Driver", driver)
-                #print devId
-                if devicepidstr in devId:
-                    devicelist[i] = devId
-                    devicelist[i+1] = desc
-                    devicelist[i+2] = driver
-                    devicelist[i+3] = devChild.value
-                    #print devicelist[i]
-                    i += 1
-                    strnum = i 
-                tree.appendChild(node)
-                dev_child(devChild.value, node, lev + 1, dom)
-
-
-    dom = Document()
-    dom.appendChild(dom.createElement("DeviceTree"))
-    devInst = c_int(0)
-    devInstNext = c_int(0)
-    lev = 0
-    if 0 == cfg.CM_Locate_DevNodeW(byref(devInst), 0, 0):
-        desc = get_dev_desc(devInst.value)
-        devId = get_dev_id(devInst.value)
-        driver = get_dev_driver(devInst.value)
-        node = dom.createElement("Device")
-        node.setAttribute("DevInst", str(devInst.value))
-        node.setAttribute("Desc", desc)
-        node.setAttribute("Lev", str(lev))
-        node.setAttribute("DevId", devId)
-        node.setAttribute("Driver", driver)
-        dom.documentElement.appendChild(node)
-        while 0 == cfg.CM_Get_Sibling(byref(devInstNext), devInst, 0):
-            devInst.value = devInstNext.value
-            desc = get_dev_desc(devInst.value)
-            devId = get_dev_id(devInst.value)
-            driver = get_dev_driver(devInst.value)
-            node = dom.createElement("Device")
-            node.setAttribute("DevInst", str(devInst.value))
-            node.setAttribute("Desc", desc)
-            node.setAttribute("Lev", str(lev))
-            node.setAttribute("DevId", devId)
-            node.setAttribute("Driver", driver)
-            dom.documentElement.appendChild(node)
-    for child in dom.documentElement.childNodes:
-        k = int(child.getAttribute("DevInst"))
-        dev_child(k, child, lev + 1, dom)
-    return dom.toprettyxml()
 
 def target_dev(tarDevId, tarClass, tarDesc):
     def dev_child(nodeInst, deviceList, targetDevId, targetClass, targetDesc):
@@ -308,35 +224,6 @@ def target_dev(tarDevId, tarClass, tarDesc):
 
 import time
 
-
-#st = time.time()
-def USBdeviceisinstalled():
-
-    timeout = 1
-    global xml
-    xml = dev_xml()
-    if strnum == 0x0:
-        print 'Device is not connected to host!'
-        return 0
-    while (timeout):
-        try:
-            for i in range(0, strnum):
-                #print devicelist[i]
-                subkey = "SYSTEM\\CurrentControlSet\\Enum\\%s"%devicelist[i] #USB\\%s" %devicelist[i].split('\\')[1]+"\\%s" %devicelist[i].split('\\')[2]
-                #print subkey
-                key = _winreg.OpenKey(
-                    _winreg.HKEY_LOCAL_MACHINE,
-                    subkey
-                    )
-                value,type = _winreg.QueryValueEx(key,"Service")
-                if reg_service in value :
-                    return 1
-                time.sleep(1)
-            return 0
-        except WindowsError:
-            time.sleep(10)
-            timeout -= 1
-
 def device_is_installed(tarDevId, tarClass, tarDesc):
     devList = target_dev(tarDevId, tarClass, tarDesc)
     if 0 == len(devList):
@@ -386,13 +273,12 @@ def interact_run(cmd,timeout=2):
     t.cancel()
     return p.returncode
 
-
 dev_status =  device_is_installed(deviceId, deviceClass, deviceDesc)
 if 1 == dev_status :
     netip = get_netcardip(netcardmac)
     print netip
     if netip != 'the netcard hasn\'t installed':
-        ret = interact_run('ping -S '+ netip +' 10.192.225.219 -t',0.5)
+        ret = interact_run('ping -S '+ netip +' 10.192.225.219 -t',float(pingtime))
         pinglog=open("pinglog.txt",'r')
         log=pinglog.read()
         pinglog.close()
@@ -401,11 +287,11 @@ if 1 == dev_status :
             FREEMV_INTERACT_RESULT = 0
             print 'run vnic pass'
         else:
-            print 'run vnic failed'
+            print 'run vnic fail'
 elif 2 == dev_status:
     print 'more than one same device are connected to host'
 elif 0 == dev_status:
     print 'no driver installed for the device'
 else:
     print 'Device is not connected to host'
-
+raw_input ('please press enter to exit')

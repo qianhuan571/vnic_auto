@@ -97,15 +97,14 @@ CM_DRP_CLASS = 0x0008
 CM_DRP_DRIVER = 0x000A
 NULL = 0
 
-#devicepId = 'USB\\VID_1FC9&PID_0094'
 deviceClass = 'Net'
-deviceDesc = 'Intel(R) 82579LM Gigabit Network Connection'
-##devicepId = 'USB\\VID_1366&PID_0105'
-deviceId = 'VEN_8086&DEV_1502'
-#reg_service = 'usb_rndisx'
-#reg_service = 'NETwNs64'
-#networkcardmac = '00-12-13-10-15-11'
-netcardmac = '08-11-96-AB-D6-34'
+#deviceDesc = 'Intel(R) 82579LM Gigabit Network Connection'
+deviceDesc = ''
+##deviceId = 'USB\\VID_1366&PID_0105'
+##deviceId = 'VEN_8086&DEV_1502'
+deviceId = 'USB\\VID_1FC9&PID_0094'
+networkcardmac = '00-12-13-10-15-11'
+#netcardmac = '08-11-96-AB-D6-34'
 
 
 def get_dev_class(devInst):
@@ -341,16 +340,16 @@ def USBdeviceisinstalled():
 def device_is_installed(tarDevId, tarClass, tarDesc):
     devList = target_dev(tarDevId, tarClass, tarDesc)
     if 0 == len(devList):
-        print 'Device is not connected to host'
+        #print 'Device is not connected to host'
         return -1
     elif 1 == len(devList):
         driver = get_dev_driver(int(devList[0]['DevInst']))
         if 'ERR' in driver:
-            print 'No driver installed for the device'
+            #print 'No driver installed for the device'
             return 0
         return 1
     else:
-        print 'more than one same device are connected to host'
+        #print 'more than one same device are connected to host'
         return 2
     
 def get_netcardip(mac):
@@ -388,15 +387,25 @@ def interact_run(cmd,timeout=2):
     return p.returncode
 
 
-##FREEMV_INTERACT_RESULT = 1
-##if device_is_installed(deviceId, deviceClass, deviceDesc) == 1 :
-##    netip = get_netcardip(netcardmac)
-##    if netip != 'the netcard hasn\'t installed':
-##        ret = interact_run('ping -S '+ netip +' 10.192.225.219 -t',0.5)
-##        pinglog=open("pinglog.txt",'r')
-##        log=pinglog.read()
-##        pinglog.close()
-##        SuccessRate = (float)(log.count('Reply from 10.192.225.219'))/(log.count('\n')-1)
-##        if ret == 1 and SuccessRate >= 0.97:
-##            FREEMV_INTERACT_RESULT = 0
+dev_status =  device_is_installed(deviceId, deviceClass, deviceDesc)
+if 1 == dev_status :
+    netip = get_netcardip(netcardmac)
+    print netip
+    if netip != 'the netcard hasn\'t installed':
+        ret = interact_run('ping -S '+ netip +' 10.192.225.219 -t',0.5)
+        pinglog=open("pinglog.txt",'r')
+        log=pinglog.read()
+        pinglog.close()
+        SuccessRate = (float)(log.count('Reply from 10.192.225.219'))/(log.count('\n')-1)
+        if ret == 1 and SuccessRate >= 0.97:
+            FREEMV_INTERACT_RESULT = 0
+            print 'run vnic pass'
+        else:
+            print 'run vnic failed'
+elif 2 == dev_status:
+    print 'more than one same device are connected to host'
+elif 0 == dev_status:
+    print 'no driver installed for the device'
+else:
+    print 'Device is not connected to host'
 

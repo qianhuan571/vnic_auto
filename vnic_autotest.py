@@ -15,10 +15,24 @@ import subprocess
 import psutil
 import hashlib
 
+from shutil import *
 from ctypes import *
 from win32gui import *
 cfg = windll.cfgmgr32
 
+
+#参数设定：
+deviceClass = 'Net'  
+#deviceDesc = 'Intel(R) 82579LM Gigabit Network Connection'
+deviceDesc = 'USB RNDIS'
+##deviceId = 'USB\\VID_1366&PID_0105'
+deviceId = 'VEN_8086&DEV_1502'
+#deviceId = 'USB\\VID_1FC9&PID_0095'
+#netCardMac = '00-12-13-10-15-11'
+netCardMac = 'D4-BE-D9-45-22-60'
+#netCardMac = '08-11-96-AB-D6-34'
+pingCount =  '20'
+copyFile= r'\\10.193.108.11\shareserver\KSDK_release\KSDK_2.0_Release1\RC1\Windows\all\SDK_2.0_FRDM-K66F_all.zip'
 
 devid_key = ''
 devicelist = {}
@@ -98,17 +112,6 @@ CM_DRP_CLASS = 0x0008
 CM_DRP_DRIVER = 0x000A
 NULL = 0
 
-deviceClass = 'Net'
-#deviceDesc = 'Intel(R) 82579LM Gigabit Network Connection'
-deviceDesc = ' USB RNDIS'
-##deviceId = 'USB\\VID_1366&PID_0105'
-##deviceId = 'VEN_8086&DEV_1502'
-deviceId = 'USB\\VID_1FC9&PID_0095'
-#netcardmac = '00-12-13-10-15-11'
-netcardmac = 'D4-BE-D9-45-22-60'
-#netcardmac = '08-11-96-AB-D6-34'
-pingtime = 0.2 #minites
-
 
 def get_dev_class(devInst):
     buf = (c_wchar*1024)()
@@ -139,14 +142,12 @@ def get_dev_id(devInst):
         return "ERR(%d):%s"%(devInst, RERVALS[cr])
 
 
-#drivers = []
 def get_dev_driver(devInst):
     global drivers
     buf = (c_wchar*1024)()
     blen = c_int(1024)
     cr = cfg.CM_Get_DevNode_Registry_PropertyW(devInst, CM_DRP_DRIVER, NULL, buf, byref(blen), 0);
     if cr == 0:
-        #drivers.append(buf.value)
         return buf.value
     else:
         return "ERR(%d):%s"%(devInst, RERVALS[cr])
@@ -276,32 +277,51 @@ def md5sum(fname):
     return m.hexdigest()
 
 
-taskkill = os.getenv('SYSTEMROOT')+'/System32/taskkill.exe'
-def interact_run(cmd,timeout=2):
-    def timeout_trigger(sub_process):
-        #print 'timeout function trigger'
-        os.system(taskkill+' /T /F /pid '+ str(sub_process.pid))
-    fpinglog = open("pinglog.txt","w+")
-    timeout = float(timeout)
-    p = subprocess.Popen(cmd, 0, None, None, subprocess.PIPE, subprocess.PIPE,shell=True)
-    t = threading.Timer(timeout*60, timeout_trigger, args=(p,))
-    t.start()
-    #p.wait()    
+##taskkill = os.getenv('SYSTEMROOT')+'/System32/taskkill.exe'
+##def interact_run(cmd,timeout=2):
+##    def timeout_trigger(sub_process):
+##        #print 'timeout function trigger'
+##        os.system(taskkill+' /T /F /pid '+ str(sub_process.pid))
+##    fpinglog = open("pinglog.txt","w+")
+##    timeout = float(timeout)
+##    p = subprocess.Popen(cmd, 0, None, None, subprocess.PIPE, subprocess.PIPE,shell=True)
+##    t = threading.Timer(timeout*60, timeout_trigger, args=(p,))
+##    t.start()
+##    #p.wait()    
+##    p.poll()
+##    while p.returncode is None:
+##        line = p.stdout.readline()
+##        line = line.strip()
+##        p.poll()
+##        if line != '':
+##            fpinglog.write(line+'\n')
+##    fpinglog.close
+##    t.cancel()
+##    return p.returncode
+
+def interact_run(netIp):
+    fPingLog = open("pinglog.txt","w+")
+    p = subprocess.Popen('ping -S '+ netIp +' 10.192.225.219 -n ' + pingCount, 0, None, None, subprocess.PIPE, subprocess.PIPE,shell=True)
     p.poll()
     while p.returncode is None:
         line = p.stdout.readline()
         line = line.strip()
         p.poll()
         if line != '':
-            fpinglog.write(line+'\n')
-    fpinglog.close
-    t.cancel()
+            fPingLog.write(line+'\n')
+    fPingLog.close()
     return p.returncode
 
+def ping_loss(pingLog):
+    logFile=open(pingLog, 'r')
+    log=logFile.read()
+    lossIndex=log.find('% loss)')
+    lossRate = string.atof( log[(lossIndex-3):lossIndex].replace('(','') ) / 100
+    return lossRate
 
 ##dev_status =  device_is_installed(deviceId, deviceClass, deviceDesc)
 ##if 1 == dev_status :
-##    netip = get_netcardip(netcardmac)
+##    netip = get_netcardip(netCardMac)
 ##    print netip
 ##    if netip != 'the netcard hasn\'t installed':
 ##        ret = interact_run('ping -S '+ netip +' 10.192.225.219 -t',float(pingtime))

@@ -31,7 +31,7 @@ deviceId = 'VEN_8086&DEV_1502'
 #netCardMac = '00-12-13-10-15-11'
 netCardMac = 'D4-BE-D9-45-22-60'
 #netCardMac = '08-11-96-AB-D6-34'
-pingCount =  '20'
+pingCount =  '6'
 copyFile= r'\\10.193.108.11\shareserver\KSDK_release\KSDK_2.0_Release1\RC1\Windows\all\SDK_2.0_FRDM-K66F_all.zip'
 
 devid_key = ''
@@ -298,19 +298,45 @@ def md5sum(fname):
 ##    fpinglog.close
 ##    t.cancel()
 ##    return p.returncode
-
+import time
 def interact_run(netIp):
     fPingLog = open("pinglog.txt","w+")
-    p = subprocess.Popen('ping -S '+ netIp +' 10.192.225.219 -n ' + pingCount, 0, None, None, subprocess.PIPE, subprocess.PIPE,shell=True)
-    p.poll()
-    while p.returncode is None:
-        line = p.stdout.readline()
-        line = line.strip()
-        p.poll()
+    p1 = subprocess.Popen('ping -S '+ netIp +' 10.192.225.219 -n ' + '60', 0, None, None, subprocess.PIPE, subprocess.PIPE,shell=True)
+    p2 = subprocess.Popen('copy ' + copyFile + ' copiedfile'+ copyFile[-4:] + ' /y',shell=True)
+    i = 1
+    while i != 0 or line != '':
+        time.sleep(1)
+        line = p1.stdout.readline()
         if line != '':
-            fPingLog.write(line+'\n')
+            fPingLog.write( line.strip()+'\n')
+        if i !=0 :
+            if p2.returncode == None:
+                copystatus = 'Copying the file '+ (i/4)*'.'
+            elif p2.returncode == 0:
+                copystatus = '1 file(s) copied.'
+                i = 0
+            elif p2.returncode == 1:
+                copystatus = 'Copy failed.'
+        print line.strip() + (64-len(line.strip()))*' ' + '| ' + copystatus
+        p1.poll()
+        p2.poll()
+        if i != 0:
+            i+=1
+        else:
+            copystatus = ''
+##    while True:
+##        try:
+##            line = p1.stdout.readline()    
+##            if line == '':
+##                break
+##            else:
+##                line = line.strip()
+##                fPingLog.write(line+'\n')
+##                print line
+##        except IOError:
+##            break
     fPingLog.close()
-    return p.returncode
+    return p1.returncode, p2.returncode
 
 def ping_loss(pingLog):
     logFile=open(pingLog, 'r')

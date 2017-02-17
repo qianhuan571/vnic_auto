@@ -22,25 +22,26 @@ cfg = windll.cfgmgr32
 
 
 #参数设定：
-deviceClass = 'Net'  
-#deviceDesc = 'Intel(R) 82579LM Gigabit Network Connection'
-deviceDesc = 'USB RNDIS'
-##deviceId = 'USB\\VID_1366&PID_0105'
-deviceId = 'VEN_8086&DEV_1502'
-#deviceId = 'USB\\VID_1FC9&PID_0095'
-#netCardMac = '00-12-13-10-15-11'
-netCardMac = 'D4-BE-D9-45-22-60'
-#netCardMac = '08-11-96-AB-D6-34'
-pingCount =  '6'
-copyFile= r'\\10.193.108.11\shareserver\KSDK_release\KSDK_2.0_Release1\RC1\Windows\all\SDK_2.0_FRDM-K66F_all.zip'
+deviceClass = 'Net'
+##deviceDesc = 'USB RNDIS' #vnic
+##deviceId = 'USB\\VID_1FC9&PID_0095'#vnic
+##netCardMac = '00-12-13-10-15-11' #vnic
+##netCardMac = 'D4-BE-D9-45-22-60' #vnic
+deviceDesc = 'Intel(R) 82579LM Gigabit Network Connection' #wlan
+deviceId = 'VEN_8086&DEV_1502' #wlan
+netCardMac = '08-11-96-AB-D6-34' #wlan
 
-devid_key = ''
-devicelist = {}
-strnum = 0
-serlist = {}
-sernum = 0
-storeidlist = {}
-storenum = 0
+pingCount =  '60'
+copyFile = r'\\10.193.108.11\shareserver\KSDK_release\KSDK_2.0_Release1\RC1\Windows\all\SDK_2.0_FRDM-K66F_all.zip'
+expectedMd5 = '50ef7dce24805f4b659362112c3083d1'
+
+##devid_key = ''
+##devicelist = {}
+##strnum = 0
+##serlist = {}
+##sernum = 0
+##storeidlist = {}
+##storenum = 0
 
 RERVALS = {
         0x00000000:"CR_SUCCESS",
@@ -299,10 +300,10 @@ def md5sum(fname):
 ##    t.cancel()
 ##    return p.returncode
 import time
-def interact_run(netIp):
-    fPingLog = open("pinglog.txt","w+")
-    p1 = subprocess.Popen('ping -S '+ netIp +' 10.192.225.219 -n ' + '60', 0, None, None, subprocess.PIPE, subprocess.PIPE,shell=True)
-    p2 = subprocess.Popen('copy ' + copyFile + ' copiedfile'+ copyFile[-4:] + ' /y',shell=True)
+def interact_run(netIp,pinglogfile,pingcount,copyfile):
+    fPingLog = open(pinglogfile ,"w+")
+    p1 = subprocess.Popen('ping -S '+ netIp +' 10.192.225.219 -n ' + pingcount, 0, None, None, subprocess.PIPE, subprocess.PIPE,shell=True)
+    p2 = subprocess.Popen('copy ' + copyfile +' '+ copyfile.split('\\')[-1] +' /y',0, None, None, subprocess.PIPE, subprocess.PIPE,shell=True)
     i = 1
     while i != 0 or line != '':
         time.sleep(1)
@@ -317,6 +318,7 @@ def interact_run(netIp):
                 i = 0
             elif p2.returncode == 1:
                 copystatus = 'Copy failed.'
+                i = 0
         print line.strip() + (64-len(line.strip()))*' ' + '| ' + copystatus
         p1.poll()
         p2.poll()
@@ -338,31 +340,55 @@ def interact_run(netIp):
     fPingLog.close()
     return p1.returncode, p2.returncode
 
-def ping_loss(pingLog):
-    logFile=open(pingLog, 'r')
-    log=logFile.read()
-    lossIndex=log.find('% loss)')
-    lossRate = string.atof( log[(lossIndex-3):lossIndex].replace('(','') ) / 100
-    return lossRate
+def ping_loss(pinglog):
+    logfile=open(pinglog, 'r')
+    log=logfile.read()
+    lossindex=log.find('% loss)')
+    lossrate = string.atof( log[(lossindex-3):lossindex].replace('(','') ) / 100
+    return lossrate
 
-##dev_status =  device_is_installed(deviceId, deviceClass, deviceDesc)
-##if 1 == dev_status :
-##    netip = get_netcardip(netCardMac)
-##    print netip
-##    if netip != 'the netcard hasn\'t installed':
-##        ret = interact_run('ping -S '+ netip +' 10.192.225.219 -t',float(pingtime))
-##        pinglog=open("pinglog.txt",'r')
-##        log=pinglog.read()
-##        pinglog.close()
-##        SuccessRate = (float)(log.count('Reply from 10.192.225.219'))/(log.count('\n')-1)
-##        if ret == 1 and SuccessRate >= 0.97:
-##            print 'run vnic pass'
-##        else:
-##            print 'run vnic fail'
-##elif 2 == dev_status:
-##    print 'more than one same device are connected to host'
-##elif 0 == dev_status:
-##    print 'no driver installed for the device'
-##else:
-##    print 'Device is not connected to host'
-##raw_input ('please press enter to exit')
+def analyze_result(pinglog,copiedfile,expectedmd5):
+    lossrate = ping_loss(pinglog)
+    copiedfilemd5 = md5sum(copiedfile)
+    if lossrate <= 0.05 and copiedfilemd5 == expectedmd5:
+        result = 1
+        print 'the dev_vnic case pass'
+    else :
+        result = -2
+        if lossrate > 0.05 :
+            print 'the dev_vnic case fail: high data package loss rate'
+        if copiedfilemd5 != expectedmd5 :
+            print 'the dev_vnic case fail: fail to copy file from network resource'
+    return result
+
+def main(deviceid, deviceclass, devicedesc, netcardmac, pinglogfile, pingcount, copyfile, expectedmd5):
+    dev_status =  device_is_installed(deviceid, deviceclass, devicedesc)
+    if 1 == dev_status :
+        netip = get_netcardip(netcardmac)
+        if netip != 'the netcard hasn\'t installed':
+            print 'the netcard ip:'+ netip
+            ret = interact_run(netip,pinglogfile,pingcount,copyfile)
+            if ret == (0,0):
+                result = analyze_result(pinglogfile, copyfile.split('\\')[-1], expectedmd5)
+            else:
+                result = -3
+                print 'the subprocess encounter unknown problem, please retry.'
+        else:
+            result = -4
+            print netip
+    elif 2 == dev_status:
+        result = 2
+        print 'more than one same device are connected to host'
+    elif 0 == dev_status:
+        result = 0
+        print 'no driver installed for the device'
+    else:
+        result = -1
+        print 'Device is not connected to host'
+    return result
+
+if __name__ == '__main__':
+    main(deviceId, deviceClass, deviceDesc, netCardMac, 'pinglog.txt', pingCount, copyFile, expectedMd5)
+    raw_input ('please press enter to exit')
+
+

@@ -12,6 +12,7 @@ import serial
 import time
 import threading
 import subprocess
+import signal
 import psutil
 import hashlib
 
@@ -32,16 +33,10 @@ deviceId = 'VEN_8086&DEV_1502' #wlan
 netCardMac = '08-11-96-AB-D6-34' #wlan
 
 pingCount =  '60'
-copyFile = r'\\10.193.108.11\shareserver\KSDK_release\KSDK_2.0_Release1\RC1\Windows\all\SDK_2.0_FRDM-K66F_all.zip'
+copyFile = r'\\10.193.108.11\shareserver\KSDK_release\Project_generator_tool\KSDK_Project_Generator_Tool\ksdk_proj_gen.zip'
+#copyFile = r'\\10.193.108.11\shareserver\KSDK_release\KSDK_2.0_Release1\RC1\Windows\all\SDK_2.0_FRDM-K66F_all.zip'
 expectedMd5 = '50ef7dce24805f4b659362112c3083d1'
 
-##devid_key = ''
-##devicelist = {}
-##strnum = 0
-##serlist = {}
-##sernum = 0
-##storeidlist = {}
-##storenum = 0
 
 RERVALS = {
         0x00000000:"CR_SUCCESS",
@@ -278,36 +273,15 @@ def md5sum(fname):
     return m.hexdigest()
 
 
-##taskkill = os.getenv('SYSTEMROOT')+'/System32/taskkill.exe'
-##def interact_run(cmd,timeout=2):
-##    def timeout_trigger(sub_process):
-##        #print 'timeout function trigger'
-##        os.system(taskkill+' /T /F /pid '+ str(sub_process.pid))
-##    fpinglog = open("pinglog.txt","w+")
-##    timeout = float(timeout)
-##    p = subprocess.Popen(cmd, 0, None, None, subprocess.PIPE, subprocess.PIPE,shell=True)
-##    t = threading.Timer(timeout*60, timeout_trigger, args=(p,))
-##    t.start()
-##    #p.wait()    
-##    p.poll()
-##    while p.returncode is None:
-##        line = p.stdout.readline()
-##        line = line.strip()
-##        p.poll()
-##        if line != '':
-##            fpinglog.write(line+'\n')
-##    fpinglog.close
-##    t.cancel()
-##    return p.returncode
 import time
 def interact_run(netIp,pinglogfile,pingcount,copyfile):
     fPingLog = open(pinglogfile ,"w+")
-    p1 = subprocess.Popen('ping -S '+ netIp +' 10.192.225.219 -n ' + pingcount, 0, None, None, subprocess.PIPE, subprocess.PIPE,shell=True)
-    p2 = subprocess.Popen('copy ' + copyfile +' '+ copyfile.split('\\')[-1] +' /y',0, None, None, subprocess.PIPE, subprocess.PIPE,shell=True)
+    p1 = subprocess.Popen('python ping.py', creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+    p2 = subprocess.Popen('copy ' + copyfile +' '+ copyfile.split('\\')[-1] +' /y', stdout=subprocess.PIPE,stderr=subprocess.PIPE, shell=True)
     i = 1
-    while i != 0 or line != '':
-        time.sleep(1)
-        line = p1.stdout.readline()
+    while i != 0 :
+        time.sleep(2)
+        line = '@ '#p1.stdout.readline()
         if line != '':
             fPingLog.write( line.strip()+'\n')
         if i !=0 :
@@ -316,6 +290,10 @@ def interact_run(netIp,pinglogfile,pingcount,copyfile):
             elif p2.returncode == 0:
                 copystatus = '1 file(s) copied.'
                 i = 0
+                #windll.kernel32.GenerateConsoleCtrlEvent(1, p1.pid)
+                #p1.send_signal(signal.CTRL_C_EVENT)
+                os.kill(p1.pid, signal.CTRL_BREAK_EVENT)
+                #p1.terminate()
             elif p2.returncode == 1:
                 copystatus = 'Copy failed.'
                 i = 0

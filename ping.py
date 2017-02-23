@@ -7,7 +7,7 @@ def signal_handler(signal, frame):
     #sys.exit(signal)
     raise Exception('catcher: i am done')
 signal.signal(signal.SIGBREAK, signal_handler)
-subprocess.Popen('ping 10.192.225.219 -t')
+proc = subprocess.Popen('ping 10.192.225.219 -t')
 ##line = p1.stdout.readline()
 ##while line != '':
 ##    print line.strip()
@@ -17,6 +17,7 @@ try:
         print 'catcher:sleeping...'
         time.sleep(1)
 except Exception as ex:
-    print ex
+    print 'helloworld'
+    os.kill(proc.pid,signal.SIGINT)
     sys.exit(0)
 

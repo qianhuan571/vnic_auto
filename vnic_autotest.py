@@ -276,12 +276,12 @@ def md5sum(fname):
 import time
 def interact_run(netIp,pinglogfile,pingcount,copyfile):
     fPingLog = open(pinglogfile ,"w+")
-    p1 = subprocess.Popen('python ping.py', creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+    p1 = subprocess.Popen('python ping.py',stdout=subprocess.PIPE,stderr=subprocess.PIPE, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
     p2 = subprocess.Popen('copy ' + copyfile +' '+ copyfile.split('\\')[-1] +' /y', stdout=subprocess.PIPE,stderr=subprocess.PIPE, shell=True)
     i = 1
-    while i != 0 :
-        time.sleep(2)
-        line = '@ '#p1.stdout.readline()
+    while i != 0 or line != '':
+        #time.sleep(1)
+        line = p1.stdout.readline()
         if line != '':
             fPingLog.write( line.strip()+'\n')
         if i !=0 :
@@ -291,8 +291,8 @@ def interact_run(netIp,pinglogfile,pingcount,copyfile):
                 copystatus = '1 file(s) copied.'
                 i = 0
                 #windll.kernel32.GenerateConsoleCtrlEvent(1, p1.pid)
-                #p1.send_signal(signal.CTRL_C_EVENT)
-                os.kill(p1.pid, signal.CTRL_BREAK_EVENT)
+                p1.send_signal(signal.CTRL_BREAK_EVENT)
+                #os.kill(p1.pid, signal.CTRL_C_EVENT)
                 #p1.terminate()
             elif p2.returncode == 1:
                 copystatus = 'Copy failed.'
@@ -365,8 +365,11 @@ def main(deviceid, deviceclass, devicedesc, netcardmac, pinglogfile, pingcount, 
         print 'Device is not connected to host'
     return result
 
+#def argv_parse(argv):
+    
+
 if __name__ == '__main__':
     main(deviceId, deviceClass, deviceDesc, netCardMac, 'pinglog.txt', pingCount, copyFile, expectedMd5)
-    raw_input ('please press enter to exit')
-
-
+    #raw_input ('please press enter to exit')
+    #print sys.argv
+    

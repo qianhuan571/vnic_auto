@@ -27,15 +27,12 @@ deviceClass = 'Net'
 deviceDesc = 'NXP USB RNDIS' 
 deviceId = 'USB\\VID_1FC9&PID_0095'
 netCardMac = '00-12-13-10-15-11' 
-# netCardMac = 'D4-BE-D9-45-22-60' 
-# deviceDesc = 'Intel(R) 82579LM Gigabit Network Connection' #待测USB网卡描述符
-# deviceId = 'VEN_8086&DEV_1502' #待测USB网卡ID
-# netCardMac = '08-11-96-AB-D6-34' #待测USB网卡Mac
 
-pingCount =  '60' #ping的次数
-copyFile = r'\\10.193.108.11\shareserver\KSDK_release\Project_generator_tool\KSDK_Project_Generator_Tool\ksdk_proj_gen.zip' #待传输文件路劲
-#copyFile = r'\\10.193.108.11\shareserver\KSDK_release\KSDK_2.0_Release1\RC1\Windows\all\SDK_2.0_FRDM-K66F_all.zip'
-expectedMd5 = '50ef7dce24805f4b659362112c3083d1'
+# deviceDesc = 'Intel(R) Dual Band Wireless-AC 8265' #待测USB网卡描述符
+# deviceId = 'VEN_8086&DEV_24FD' #待测USB网卡ID
+# netCardMac = '90-61-AE-4A-BB-27' #待测USB网卡Mac
+
+pingCount =  5 #ping的次数
 
 
 RERVALS = {
@@ -230,12 +227,12 @@ def device_is_installed(tarDevId, tarClass, tarDesc):
     elif 1 == len(devList):
         driver = get_dev_driver(int(devList[0]['DevInst']))
         if 'ERR' in driver:
-            #print 'No driver installed for the device'
-            return 0
-        return 1
+            print 'No driver installed for the device'
+            return -2
+        return 0
     else:
         #print 'more than one same device are connected to host'
-        return 2
+        return 1
     
 def get_netcardip(mac):
     readflag = 0
@@ -245,131 +242,93 @@ def get_netcardip(mac):
         for j  in range (len(netcardlist[i][1])):
             if netcardlist[i][1][j][0]==-1 and netcardlist[i][1][j][1] == mac:
                 return netcardlist[i][1][j+1][1]
-    return 'the netcard hasn\'t installed'
+    return -1
                 
-                
-def md5sum(fname):
-    """ 计算文件的MD5值
-    """
-    def read_chunks(fh):
-        fh.seek(0)
-        chunk = fh.read(8096)
-        while chunk:
-            yield chunk
-            chunk = fh.read(8096)
-        else: #最后要将游标放回文件开头
-            fh.seek(0)
-    m = hashlib.md5()
-    if isinstance(fname, basestring) and os.path.exists(fname):
-        with open(fname, "rb") as fh:
-            for chunk in read_chunks(fh):
-                m.update(chunk)
-	#上传的文件缓存 或 已打开的文件流
-    elif fname.__class__.__name__ in ["StringIO", "StringO"] or isinstance(fname, file):
-        for chunk in read_chunks(fname):
-            m.update(chunk)
-    else:
-        return ""
-    return m.hexdigest()
-
 
 import time
-def interact_run(netIp,pinglogfile,pingcount,copyfile):
+def interact_run(netIp,pinglogfile,pingcount):
     fPingLog = open(pinglogfile ,"w+")
-    p1 = subprocess.Popen('python ping.py',stdout=subprocess.PIPE,stderr=subprocess.PIPE, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
-    p2 = subprocess.Popen('copy ' + copyfile +' '+ copyfile.split('\\')[-1] +' /y', stdout=subprocess.PIPE,stderr=subprocess.PIPE, shell=True)
-    i = 1
-    while i != 0 or line != '':
-        #time.sleep(1)
-        line = p1.stdout.readline()
-        if line != '':
-            fPingLog.write( line.strip()+'\n')
-        if i !=0 :
-            if p2.returncode == None:
-                copystatus = 'Copying the file '+ (i/4)*'.'
-            elif p2.returncode == 0:
-                copystatus = '1 file(s) copied.'
-                i = 0
-                #windll.kernel32.GenerateConsoleCtrlEvent(1, p1.pid)
-                p1.send_signal(signal.CTRL_BREAK_EVENT)
-                #os.kill(p1.pid, signal.CTRL_C_EVENT)
-                #p1.terminate()
-            elif p2.returncode == 1:
-                copystatus = 'Copy failed.'
-                i = 0
-        print line.strip() + (64-len(line.strip()))*' ' + '| ' + copystatus
-        p1.poll()
-        p2.poll()
-        if i != 0:
-            i+=1
-        else:
-            copystatus = ''
-##    while True:
-##        try:
-##            line = p1.stdout.readline()    
-##            if line == '':
-##                break
-##            else:
-##                line = line.strip()
-##                fPingLog.write(line+'\n')
-##                print line
-##        except IOError:
-##            break
+    p = subprocess.Popen('ping 192.168.1.1 -t -S '+netIp,stdout=subprocess.PIPE,stderr=subprocess.PIPE, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+    count = pingcount
+    p.poll()
+    line = p.stdout.readline()
+    while line != '' or p.returncode == None:
+        try:
+            line = line.strip()
+            if line != '':
+                fPingLog.write(line+'\n')
+                print line   
+        except IOError:
+            break
+        time.sleep(1)
+        if count == 0:
+            p.terminate()
+        count = count - 1
+        p.poll()
+        line = p.stdout.readline()
     fPingLog.close()
-    return p1.returncode, p2.returncode
+    return p.returncode
 
 def ping_loss(pinglog):
+    sum = 0
+    count = 0
     logfile=open(pinglog, 'r')
-    log=logfile.read()
-    lossindex=log.find('% loss)')
-    lossrate = string.atof( log[(lossindex-3):lossindex].replace('(','') ) / 100
+    line=logfile.readline()
+    while '' != line:
+        if "time=" in line:
+            count = count + 1
+        sum = sum + 1
+        line=logfile.readline()
+    if sum != 0:
+        lossrate = 100 - count*100 / (sum-1)
+    else:
+        return -1
+    print "lossrate:"+str(lossrate)
     return lossrate
 
-def analyze_result(pinglog,copiedfile,expectedmd5):
+def analyze_result(pinglog):
     lossrate = ping_loss(pinglog)
-    copiedfilemd5 = md5sum(copiedfile)
-    if lossrate <= 0.05 and copiedfilemd5 == expectedmd5:
-        result = 1
+    if lossrate == -1:
+        result = -5
+        print 'no ping log'
+    elif lossrate <= 5:
+        result = 0
         print 'the dev_vnic case pass'
     else :
-        result = -2
-        if lossrate > 0.05 :
-            print 'the dev_vnic case fail: high data package loss rate'
-        if copiedfilemd5 != expectedmd5 :
-            print 'the dev_vnic case fail: fail to copy file from network resource'
+        result = -4
+        print 'the dev_vnic case fail: high data package loss rate'
     return result
 
-def main(deviceid, deviceclass, devicedesc, netcardmac, pinglogfile, pingcount, copyfile, expectedmd5):
+def main(deviceid, deviceclass, devicedesc, netcardmac, pinglogfile, pingcount):
     dev_status =  device_is_installed(deviceid, deviceclass, devicedesc)
-    if 1 == dev_status :
+    if 0 == dev_status :
         netip = get_netcardip(netcardmac)
         if netip != 'the netcard hasn\'t installed':
             print 'the netcard ip:'+ netip
-            ret = interact_run(netip,pinglogfile,pingcount,copyfile)
-            if ret == (0,0):
-                result = analyze_result(pinglogfile, copyfile.split('\\')[-1], expectedmd5)
+            ret = interact_run(netip,pinglogfile,pingcount)
+            if 1 == ret:
+                result = analyze_result(pinglogfile)
             else:
                 result = -3
                 print 'the subprocess encounter unknown problem, please retry.'
         else:
             result = -4
             print netip
-    elif 2 == dev_status:
-        result = 2
+    elif 1 == dev_status:
+        result = 1
         print 'more than one same device are connected to host'
-    elif 0 == dev_status:
-        result = 0
+    elif -2 == dev_status:
+        result = -2
         print 'no driver installed for the device'
-    else:
+    elif -1 == dev_status:
         result = -1
         print 'Device is not connected to host'
     return result
 
-#def argv_parse(argv):
     
-
-if __name__ == '__main__':
-    main(deviceId, deviceClass, deviceDesc, netCardMac, 'pinglog.txt', pingCount, copyFile, expectedMd5)
-    #raw_input ('please press enter to exit')
-    #print sys.argv
+time.sleep(8)
+FREEMV_INTERACT_RESULT = main(deviceId, deviceClass, deviceDesc, netCardMac, 'pinglog.txt', pingCount)
+time.sleep(2)
+#print FREEMV_INTERACT_RESULT
+#raw_input ('please press enter to exit')
     

@@ -1,3 +1,3 @@
-# vnic_autotest.py
+# interact.py
 the python script is coded for testing the virtual nic with python2.7.
 

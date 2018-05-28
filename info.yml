@@ -1,0 +1,8 @@
+serial_baudrate: '115200'
+app_run_duration: 1
+auto: 1
+interact: 1
+assistant: 0
+no_pattern: [error, invalid]
+pattern: ['USB\s+device\s+CDC\s+virtual\s+nic\s+demo',RNDIS_Halt_Command]
+assistant_init: 0

@@ -24,16 +24,16 @@ cfg = windll.cfgmgr32
 
 #参数设定：
 deviceClass = 'Net'
-##deviceDesc = 'USB RNDIS' #vnic
-##deviceId = 'USB\\VID_1FC9&PID_0095'#vnic
-##netCardMac = '00-12-13-10-15-11' #vnic
-##netCardMac = 'D4-BE-D9-45-22-60' #vnic
-deviceDesc = 'Intel(R) 82579LM Gigabit Network Connection' #wlan
-deviceId = 'VEN_8086&DEV_1502' #wlan
-netCardMac = '08-11-96-AB-D6-34' #wlan
+deviceDesc = 'NXP USB RNDIS' 
+deviceId = 'USB\\VID_1FC9&PID_0095'
+netCardMac = '00-12-13-10-15-11' 
+# netCardMac = 'D4-BE-D9-45-22-60' 
+# deviceDesc = 'Intel(R) 82579LM Gigabit Network Connection' #待测USB网卡描述符
+# deviceId = 'VEN_8086&DEV_1502' #待测USB网卡ID
+# netCardMac = '08-11-96-AB-D6-34' #待测USB网卡Mac
 
-pingCount =  '60'
-copyFile = r'\\10.193.108.11\shareserver\KSDK_release\Project_generator_tool\KSDK_Project_Generator_Tool\ksdk_proj_gen.zip'
+pingCount =  '60' #ping的次数
+copyFile = r'\\10.193.108.11\shareserver\KSDK_release\Project_generator_tool\KSDK_Project_Generator_Tool\ksdk_proj_gen.zip' #待传输文件路劲
 #copyFile = r'\\10.193.108.11\shareserver\KSDK_release\KSDK_2.0_Release1\RC1\Windows\all\SDK_2.0_FRDM-K66F_all.zip'
 expectedMd5 = '50ef7dce24805f4b659362112c3083d1'
 
